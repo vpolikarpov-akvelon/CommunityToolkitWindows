@@ -125,14 +125,16 @@ jobs:
         id: test-platform
         run:  vstest.console.exe ./tooling/**/CommunityToolkit.Tests.${{ env.TEST_PLATFORM }}.build.appxrecipe /Framework:FrameworkUap10 /logger:"trx;LogFileName=${{ env.TEST_PLATFORM }}.trx"
 
-      - name: Get-EventLog
+      - name: Get-EventLog System
         run: |
-          Get-EventLog -LogName System -EntryType Error | Format-List
+          $hourago = [System.DateTime]::Now.AddHours(-1)
+          Get-EventLog -LogName System -After $hourago | Format-List
         if: ${{ always() }}
 
-      - name: Get-PSDrive
+      - name: Get-EventLog Application
         run: |
-          Get-PSDrive
+          $hourago = [System.DateTime]::Now.AddHours(-1)
+          Get-EventLog -LogName Application -After $hourago | Format-List
         if: ${{ always() }}
 
       - name: Artifact - Diagnostic Logs
