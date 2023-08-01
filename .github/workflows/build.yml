@@ -91,17 +91,13 @@ jobs:
       - name: Setup VSTest Path
         uses: darenm/Setup-VSTest@v1
 
-      - name: ListLoggers
-        run: |
-          VSTest.Console.exe /ListLoggers
-
       - name: Run SourceGenerators tests
         id: test-generator
         run: vstest.console.exe ./tooling/CommunityToolkit.Tooling.SampleGen.Tests/bin/Release/net6.0/CommunityToolkit.Tooling.SampleGen.Tests.dll /logger:"trx;LogFileName=SourceGenerators.trx"
 
       - name: Run experiment tests against ${{ env.TEST_PLATFORM }}
         id: test-platform
-        run:  vstest.console.exe ./tooling/**/CommunityToolkit.Tests.${{ env.TEST_PLATFORM }}.build.appxrecipe /Framework:FrameworkUap10 /logger:console
+        run:  vstest.console.exe ./tooling/**/CommunityToolkit.Tests.${{ env.TEST_PLATFORM }}.build.appxrecipe /Framework:FrameworkUap10 /logger:"trx;LogFileName=${{ env.TEST_PLATFORM }}.trx" /Blame
 
       - name: Get-EventLog System
         run: |
@@ -114,6 +110,13 @@ jobs:
           $hourago = [System.DateTime]::Now.AddHours(-1)
           Get-EventLog -LogName Application -After $hourago | Format-List
         if: ${{ always() }}
+
+      - name: Artifact - TestResults
+        uses: actions/upload-artifact@v3
+        if: ${{ always() }}
+        with:
+          name: test-results-${{ env.TEST_PLATFORM }}
+          path: ./TestResults
 
       - name: Artifact - Diagnostic Logs
         uses: actions/upload-artifact@v3
