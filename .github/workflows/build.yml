@@ -50,6 +50,15 @@ jobs:
         if: ${{ env.ENABLE_DIAGNOSTICS == 'true' }}
         run: dotnet --info
 
+      - name: Enable User-Mode Dumps collecting
+        shell: powershell
+        run: |
+          New-Item '${{ github.workspace }}\CrashDumps' -Type Directory
+          New-Item 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps' -Name 'DumpFolder' -Type ExpandString -Value '${{ github.workspace }}\CrashDumps'
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps' -Name 'DumpCount' -Type DWord -Value '10'
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps' -Name 'DumpType' -Type DWord -Value '2'
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -117,6 +126,18 @@ jobs:
         with:
           name: test-results-${{ matrix.platform }}
           path: ./TestResults
+
+      - name: List CrashDumps
+        run: |
+          Get-ChildItem ./CrashDumps
+        if: ${{ always() }}
+
+      - name: Artifact - CrashDumps
+        uses: actions/upload-artifact@v3
+        if: ${{ always() }}
+        with:
+          name: CrashDumps-${{ matrix.platform }}
+          path: './CrashDumps'
 
       - name: Artifact - Diagnostic Logs
         uses: actions/upload-artifact@v3
