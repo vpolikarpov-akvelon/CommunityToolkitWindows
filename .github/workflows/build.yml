@@ -105,17 +105,17 @@ jobs:
           Get-EventLog -LogName System -After $hourago | Format-List
         if: ${{ always() }}
 
-      - name: Get-EventLog Application
+      - name: ListLog
         run: |
           $hourago = [System.DateTime]::Now.AddHours(-1)
-          Get-EventLog -LogName Application -After $hourago | Format-List
+          Get-WinEvent -ListLog *
         if: ${{ always() }}
 
       - name: Artifact - TestResults
         uses: actions/upload-artifact@v3
         if: ${{ always() }}
         with:
-          name: test-results-${{ env.TEST_PLATFORM }}
+          name: test-results-${{ matrix.platform }}
           path: ./TestResults
 
       - name: Artifact - Diagnostic Logs
