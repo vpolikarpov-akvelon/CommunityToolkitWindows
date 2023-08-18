@@ -124,24 +124,19 @@ jobs:
 
       # Run tests
       - name: Setup VSTest Path
-        uses: darenm/Setup-VSTest@v1
+        uses: darenm/Setup-VSTest@v1.2
 
       - name: Run SourceGenerators tests
         id: test-generator
         run: vstest.console.exe ./tooling/CommunityToolkit.Tooling.SampleGen.Tests/bin/Release/net6.0/CommunityToolkit.Tooling.SampleGen.Tests.dll /logger:"trx;LogFileName=SourceGenerators.trx"
 
-      - name: Establish SSH connection and run tests
+      - name: Run tests
         env: 
           SSH_SERVER: ${{ secrets.SSH_SERVER }}
           SSH_SERVER_IP_ADDR: ${{ secrets.SSH_SERVER_IP_ADDR }}
         id: test-platform
         run: |
-          $j = Start-Job -ScriptBlock {
-            ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o BatchMode=yes -N -R 127.0.0.1:2${{ matrix.platform-version }}${{github.run_number}}:127.0.0.1:22 $env:SSH_SERVER
-          }
-          
-          # Run tests in a loop till ssh tunnel lives
-          while ($j.State -eq 'Running') {
+          while ($true) {
             Write-Host "Running tests..."
             vstest.console.exe `
               ./tooling/**/CommunityToolkit.Tests.${{ env.TEST_PLATFORM }}.build.appxrecipe `
@@ -151,26 +146,12 @@ jobs:
               /Blame
             if ($LASTEXITCODE -ne 0) {
               Write-Host "==========> Tests FAILED at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))"
+              break
             } else {
               Write-Host "==========> Tests PASSED at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))"
             }
-            Start-Sleep 900
+            Start-Sleep 60
           }
-
-          # Display job status
-          $j | Format-List
-  
-      - name: Get-EventLog System
-        run: |
-          $hourago = [System.DateTime]::Now.AddHours(-1)
-          Get-EventLog -LogName System -After $hourago | Format-List
-        if: ${{ always() }}
-
-      - name: ListLog
-        run: |
-          $hourago = [System.DateTime]::Now.AddHours(-1)
-          Get-WinEvent -ListLog *
-        if: ${{ always() }}
 
       - name: Artifact - TestResults
         uses: actions/upload-artifact@v3
@@ -193,7 +174,7 @@ jobs:
 
       - name: Artifact - Diagnostic Logs
         uses: actions/upload-artifact@v3
-        if: ${{ (env.ENABLE_DIAGNOSTICS == 'true' || env.COREHOST_TRACE != '') && always() }}
+        if: ${{ always() }}
         with:
-          name: build-logs
-          path: ./**/*.*log
+          name: diag-WinUI${{ matrix.platform-version }}
+          path: ./diag*
